@@ -4,7 +4,7 @@
 
 - Live application: https://match-pulse-five.vercel.app
 - Public repository: https://github.com/nonggde/match-pulse
-- Demo video: `[add public video URL]`
+- Demo video: https://match-pulse-five.vercel.app/match-pulse-demo.mp4
 
 ## One-line summary
 
