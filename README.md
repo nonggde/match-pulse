@@ -4,6 +4,9 @@ Match Pulse is a real-time World Cup fan room powered by TxODDS TxLINE. It turns
 scores, and de-margined fair probabilities into an accessible match pulse, a friendly pick game, and
 shareable match moments. It never asks fans to stake funds or connect a wallet.
 
+- Live app: https://match-pulse-five.vercel.app
+- Public repository: https://github.com/nonggde/match-pulse
+
 ## TxLINE integration
 
 The server uses only the TxLINE World Cup free tier:

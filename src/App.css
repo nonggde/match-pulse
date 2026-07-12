@@ -34,7 +34,7 @@
 .stage-meta span { display: inline-flex; align-items: center; gap: 6px; } .stage-meta .source-chip { color: var(--signal); }
 .scoreboard { min-height: 238px; display: grid; grid-template-columns: 1fr 190px 1fr; align-items: center; gap: 24px; }
 .team { min-width: 0; display: flex; flex-direction: column; align-items: center; }
-.team h1 { max-width: 100%; font-size: clamp(30px, 4vw, 56px); line-height: .92; text-transform: uppercase; text-align: center; overflow-wrap: anywhere; }
+.team h1 { max-width: 100%; font-size: clamp(28px, 3vw, 46px); line-height: .92; text-transform: uppercase; text-align: center; overflow-wrap: normal; word-break: normal; hyphens: none; }
 .team small { color: #c3c7c0; margin-top: 8px; font-size: 9px; text-transform: uppercase; }
 .team-badge { width: 54px; height: 54px; display: grid; place-items: center; margin-bottom: 13px; color: var(--night); background: var(--paper); border: 3px solid rgba(255,255,255,.42); font: 800 18px/1 'Barlow Condensed', sans-serif; box-shadow: 7px 7px 0 rgba(0,0,0,.25); }
 .away-team .team-badge { background: var(--signal); }

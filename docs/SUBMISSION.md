@@ -2,8 +2,8 @@
 
 ## Links to complete before submission
 
-- Live application: `[add deployed URL]`
-- Public repository: `[add GitHub URL]`
+- Live application: https://match-pulse-five.vercel.app
+- Public repository: https://github.com/nonggde/match-pulse
 - Demo video: `[add public video URL]`
 
 ## One-line summary
