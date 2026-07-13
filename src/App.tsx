@@ -16,7 +16,7 @@ const formatKickoff = (date: string) => new Intl.DateTimeFormat('en', {
 const teamCode = (name: string) => name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase()
 
 function App() {
-  const [feed, setFeed] = useState<MatchFeed>({ source: 'demo', matches: demoMatches, updatedAt: new Date().toISOString() })
+  const [feed, setFeed] = useState<MatchFeed>({ source: 'demo', provider: 'demo', matches: demoMatches, updatedAt: new Date().toISOString() })
   const [selectedId, setSelectedId] = useState(demoMatches[0].id)
   const [view, setView] = useState<View>('room')
   const [loading, setLoading] = useState(true)
@@ -27,8 +27,8 @@ function App() {
     catch { return {} }
   })
 
-  const loadFeed = async () => {
-    setLoading(true)
+  const loadFeed = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true)
     try {
       const response = await fetch('/api/matches')
       if (!response.ok) throw new Error('feed unavailable')
@@ -38,13 +38,13 @@ function App() {
         setSelectedId((current) => next.matches.some((match) => match.id === current) ? current : next.matches[0].id)
       }
     } catch {
-      setFeed({ source: 'demo', matches: demoMatches, updatedAt: new Date().toISOString() })
-    } finally { setLoading(false) }
+      setFeed({ source: 'demo', provider: 'demo', matches: demoMatches, updatedAt: new Date().toISOString() })
+    } finally { if (showSpinner) setLoading(false) }
   }
 
   useEffect(() => {
     void loadFeed()
-    const timer = window.setInterval(() => void loadFeed(), 30_000)
+    const timer = window.setInterval(() => void loadFeed(false), 15_000)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -52,6 +52,10 @@ function App() {
     () => feed.matches.find((match) => match.id === selectedId) ?? feed.matches[0],
     [feed.matches, selectedId],
   )
+  const providerLabel = feed.provider === 'txline' ? 'TxLINE live' : feed.provider === 'scoreboard' ? 'Live scoreboard' : 'Demo feed'
+  const pickOptions: Array<{ label: string; pct?: number }> = selected?.outcomes.length
+    ? selected.outcomes.map((outcome) => ({ label: outcome.label, pct: outcome.pct }))
+    : selected ? [{ label: selected.home }, { label: 'Draw' }, { label: selected.away }] : []
 
   const choosePick = (matchId: string, outcome: string) => {
     const next = { ...picks, [matchId]: outcome }
@@ -61,7 +65,8 @@ function App() {
 
   const copyMoment = async () => {
     const score = selected.score ? `${selected.score.home}-${selected.score.away}` : 'up next'
-    const text = `${selected.home} ${score} ${selected.away} | Match Pulse ${selected.pulse}/100 | Powered by verified TxLINE data.`
+    const source = feed.provider === 'txline' ? 'Verified by TxLINE' : feed.provider === 'scoreboard' ? 'Current World Cup scoreboard' : 'Demo scenario'
+    const text = `${selected.home} ${score} ${selected.away} | Match Pulse ${selected.pulse}/100 | ${source}.`
     await navigator.clipboard.writeText(text)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1600)
@@ -82,7 +87,7 @@ function App() {
           <button className={view === 'picks' ? 'active' : ''} onClick={() => setView('picks')}>My picks</button>
         </nav>
         <div className="feed-state">
-          <span className={`status-dot ${feed.source}`} /><span>{feed.source === 'live' ? 'TxLINE live' : 'Demo feed'}</span>
+          <span className={`status-dot ${feed.source}`} /><span title={feed.note}>{providerLabel}</span>
           <button type="button" title="Refresh feed" onClick={() => void loadFeed()} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
           </button>
@@ -101,7 +106,11 @@ function App() {
             <span className="mini-score"><b>{match.score?.home ?? '-'}</b><b>{match.score?.away ?? '-'}</b></span>
             <ChevronRight size={16} />
           </button>)}
-          <div className="verified-note"><ShieldCheck size={17} /><span>Fixtures, scores and fair probabilities are read from TxODDS TxLINE.</span></div>
+          <div className="verified-note"><ShieldCheck size={17} /><span>{feed.provider === 'txline'
+            ? 'Fixtures, scores and fair probabilities are verified by TxODDS TxLINE.'
+            : feed.provider === 'scoreboard'
+              ? 'Current fixtures and scores come from the live World Cup scoreboard. TxLINE verification is pending.'
+              : 'This is a static demo scenario, not a current match feed.'}</span></div>
         </aside>
 
         <section className="match-stage">
@@ -109,7 +118,7 @@ function App() {
           <div className="stage-meta">
             <span><Trophy size={15} /> {selected.competition}</span>
             <span><CalendarDays size={15} /> {formatKickoff(selected.startTime)}</span>
-            <span className="source-chip"><CircleDot size={14} /> {selected.verified ? 'Verified feed' : 'Demo scenario'}</span>
+            <span className={`source-chip ${feed.provider}`}><CircleDot size={14} /> {selected.verified ? 'TxLINE verified' : feed.provider === 'scoreboard' ? 'Current scoreboard' : 'Demo scenario'}</span>
           </div>
           <div className="scoreboard">
             <div className="team home-team"><span className="team-badge">{teamCode(selected.home)}</span><h1>{selected.home}</h1><small>Home</small></div>
@@ -126,9 +135,9 @@ function App() {
               <p>{selected.insight}</p>
             </div>
             <div className="pulse-line" style={{ '--pulse': `${selected.pulse}%` } as React.CSSProperties}><span /></div>
-            <div className="probability-row">{selected.outcomes.map((outcome) => <div key={outcome.label}>
+            {selected.outcomes.length ? <div className="probability-row">{selected.outcomes.map((outcome) => <div key={outcome.label}>
               <span>{outcome.label}</span><strong>{outcome.pct.toFixed(0)}%</strong><small>{outcome.delta > 0 ? '+' : ''}{outcome.delta.toFixed(1)} today</small>
-            </div>)}</div>
+            </div>)}</div> : <div className="market-empty"><Radio size={16} /><div><strong>TxLINE fair line pending</strong><span>The current fixture is real; no market percentage is being fabricated.</span></div></div>}
           </div>
           <div className="stage-actions">
             <button className="primary-action" type="button" onClick={() => setShareOpen(true)}><Share2 size={17} /> Create moment card</button>
@@ -140,10 +149,10 @@ function App() {
           <section className="pick-section">
             <div className="section-title"><div><Users size={17} /><span>Call the result</span></div><small>Local fan pick</small></div>
             <p>Lock a friendly prediction before kickoff. No wallet, stake or money involved.</p>
-            <div className="pick-grid">{selected.outcomes.map((outcome) => <button
+            <div className="pick-grid">{pickOptions.map((outcome) => <button
               key={outcome.label} className={picks[selected.id] === outcome.label ? 'picked' : ''} type="button"
               onClick={() => choosePick(selected.id, outcome.label)}
-            >{picks[selected.id] === outcome.label && <Check size={14} />}<span>{outcome.label}</span><strong>{outcome.pct.toFixed(0)}%</strong></button>)}</div>
+            >{picks[selected.id] === outcome.label && <Check size={14} />}<span>{outcome.label}</span><strong>{outcome.pct == null ? 'Pick' : `${outcome.pct.toFixed(0)}%`}</strong></button>)}</div>
           </section>
           <section className="timeline-section">
             <div className="section-title"><div><Radio size={17} /><span>Moment wire</span></div><small>{selected.events.length} updates</small></div>
@@ -183,7 +192,7 @@ function App() {
           <span className="eyebrow">Match Pulse moment</span>
           <div className="moment-score"><b>{teamCode(selected.home)}</b><span>{selected.score?.home ?? '-'} : {selected.score?.away ?? '-'}</span><b>{teamCode(selected.away)}</b></div>
           <h2>{selected.insight}</h2>
-          <div className="moment-pulse"><Activity size={18} /><span>Pulse {selected.pulse}/100</span><small>{feed.source === 'live' ? 'TxLINE verified' : 'Demo scenario'}</small></div>
+          <div className="moment-pulse"><Activity size={18} /><span>Pulse {selected.pulse}/100</span><small>{selected.verified ? 'TxLINE verified' : feed.provider === 'scoreboard' ? 'Current scoreboard' : 'Demo scenario'}</small></div>
           <button className="copy-button" type="button" onClick={() => void copyMoment()}>{copied ? <Check size={17} /> : <Copy size={17} />}{copied ? 'Copied' : 'Copy share text'}</button>
         </section>
       </div>}

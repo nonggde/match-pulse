@@ -2,6 +2,14 @@ import type { Match, MatchEvent, MatchStatus, Outcome } from '../src/lib/types.j
 type RecordLike = Record<string, unknown>
 const finite = (value: unknown) => Number.isFinite(Number(value))
 
+export const timestampIso = (value: unknown): string | undefined => {
+  const numeric = Number(value)
+  const date = Number.isFinite(numeric)
+    ? new Date(numeric < 10_000_000_000 ? numeric * 1000 : numeric)
+    : new Date(String(value ?? ''))
+  return Number.isFinite(date.getTime()) ? date.toISOString() : undefined
+}
+
 const labelFor = (name: string, home: string, away: string) => {
   if (name === 'part1') return home
   if (name === 'part2') return away
@@ -23,27 +31,43 @@ export function fairOutcomes(raw: unknown, home: string, away: string): Outcome[
   }).slice(0, 3)
 }
 
-export function findScore(raw: unknown): { home: number; away: number; status?: string; minute?: number } | undefined {
+export function findScore(raw: unknown): { home: number; away: number; status?: string; minute?: number; timestamp?: number } | undefined {
   const seen = new Set<unknown>()
-  const walk = (value: unknown): ReturnType<typeof findScore> => {
-    if (!value || typeof value !== 'object' || seen.has(value)) return undefined
+  const candidates: NonNullable<ReturnType<typeof findScore>>[] = []
+  const walk = (value: unknown): void => {
+    if (!value || typeof value !== 'object' || seen.has(value)) return
     seen.add(value)
     const item = value as RecordLike
+    const soccer = (item.scoreSoccer ?? item.ScoreSoccer) as RecordLike | undefined
+    const participant1 = soccer?.Participant1 as RecordLike | undefined
+    const participant2 = soccer?.Participant2 as RecordLike | undefined
+    const soccerHome = Number((participant1?.Total as RecordLike | undefined)?.Goals)
+    const soccerAway = Number((participant2?.Total as RecordLike | undefined)?.Goals)
+    const dataSoccer = (item.dataSoccer ?? item.DataSoccer) as RecordLike | undefined
+    const clock = item.clock as RecordLike | undefined
+    const status = String(item.gameState ?? item.statusSoccerId ?? item.status ?? item.Status ?? item.matchStatus ?? item.action ?? '')
+    const minute = Number(dataSoccer?.Minutes ?? item.minute ?? item.Minute ?? (finite(clock?.seconds) ? Math.floor(Number(clock?.seconds) / 60) : 0)) || undefined
+    const timestamp = Number(item.ts ?? item.Ts ?? 0) || undefined
+    if (Number.isFinite(soccerHome) && Number.isFinite(soccerAway)) {
+      candidates.push({ home: soccerHome, away: soccerAway, status, minute, timestamp })
+    }
     const home = Number(item.homeScore ?? item.HomeScore ?? item.Participant1Score ?? item.ScoreHome)
     const away = Number(item.awayScore ?? item.AwayScore ?? item.Participant2Score ?? item.ScoreAway)
-    if (Number.isFinite(home) && Number.isFinite(away)) return {
-      home, away, status: String(item.status ?? item.Status ?? item.matchStatus ?? ''), minute: Number(item.minute ?? item.Minute ?? item.clock ?? 0) || undefined,
+    if (Number.isFinite(home) && Number.isFinite(away)) {
+      candidates.push({ home, away, status, minute, timestamp })
     }
-    for (const child of Object.values(item)) { const found = walk(child); if (found) return found }
-    return undefined
+    for (const child of Object.values(item)) walk(child)
   }
-  return walk(raw)
+  walk(raw)
+  return candidates.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0) || (b.minute ?? 0) - (a.minute ?? 0))[0]
 }
 
 const statusOf = (startTime: string, score?: ReturnType<typeof findScore>): MatchStatus => {
-  if (/final|finished|complete|ended|ft/i.test(score?.status ?? '')) return 'FINAL'
-  if (score && (/live|play|half|period/i.test(score.status ?? '') || score.minute)) return 'LIVE'
-  return new Date(startTime).getTime() < Date.now() - 3 * 60 * 60_000 ? 'FINAL' : 'UPCOMING'
+  if (/final|finished|complete|ended|ft|f2|fpe|fet|end/i.test(score?.status ?? '')) return 'FINAL'
+  if (score && (/live|play|half|period|i2|h11|h21|et/i.test(score.status ?? '') || score.minute)) return 'LIVE'
+  const delta = Date.now() - new Date(startTime).getTime()
+  if (delta >= 0 && delta < 4 * 60 * 60_000) return 'LIVE'
+  return delta >= 4 * 60 * 60_000 ? 'FINAL' : 'UPCOMING'
 }
 
 const eventsFor = (status: MatchStatus, score: ReturnType<typeof findScore>, outcomes: Outcome[]): MatchEvent[] => {
@@ -56,11 +80,9 @@ const eventsFor = (status: MatchStatus, score: ReturnType<typeof findScore>, out
 }
 
 export function toMatch(fixture: RecordLike, odds: unknown, scores: unknown): Match | undefined {
-  const id = String(fixture.FixtureId ?? ''), home = String(fixture.Participant1 ?? ''), away = String(fixture.Participant2 ?? ''), startTime = String(fixture.StartTime ?? '')
+  const id = String(fixture.FixtureId ?? ''), home = String(fixture.Participant1 ?? ''), away = String(fixture.Participant2 ?? ''), startTime = timestampIso(fixture.StartTime)
   if (!id || !home || !away || !startTime) return undefined
   const outcomes = fairOutcomes(odds, home, away)
-  if (!outcomes.length) return undefined
-  while (outcomes.length < 3) outcomes.push({ label: outcomes.length === 1 ? 'Draw' : away, pct: 0, delta: 0 })
   const score = findScore(scores), status = statusOf(startTime, score), sorted = [...outcomes].sort((a, b) => b.pct - a.pct)
   const spread = (sorted[0]?.pct ?? 0) - (sorted[1]?.pct ?? 0), goals = score ? score.home + score.away : 0
   const pulse = Math.max(34, Math.min(98, Math.round(58 + goals * 7 - spread * .35 + (status === 'LIVE' ? 14 : 0))))
@@ -68,7 +90,9 @@ export function toMatch(fixture: RecordLike, odds: unknown, scores: unknown): Ma
   return {
     id, competition: String(fixture.Competition ?? 'World Cup'), home, away, startTime, venue: 'World Cup venue', status,
     minute: score?.minute ?? (status === 'FINAL' ? 90 : 0), score: score ? { home: score.home, away: score.away } : undefined,
-    outcomes, pulse, insight: spread < 8 ? 'The fair line is tight. One moment can flip this match.' : `${leader.label} leads the verified line, but the room is still moving.`,
+    outcomes, pulse, insight: !leader
+      ? status === 'UPCOMING' ? 'Fixture confirmed. The TxLINE fair line is waiting for its first priced snapshot.' : 'The score feed is active. Market pricing is temporarily unavailable.'
+      : spread < 8 ? 'The fair line is tight. One moment can flip this match.' : `${leader.label} leads the verified line, but the room is still moving.`,
     events: eventsFor(status, score, outcomes), verified: true,
   }
 }

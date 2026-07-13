@@ -16,8 +16,9 @@ The server uses only the TxLINE World Cup free tier:
 - `GET /api/scores/snapshot/{fixtureId}`
 
 Every upstream request sends both the public guest JWT and the activated `X-Api-Token`. The API token
-stays server-side. If the free feed has no priced fixtures or the token is absent, the app switches to
-a clearly labelled demo scenario. Demo content is never presented as live or verified data.
+stays server-side. If TxLINE credentials are unavailable, the app switches to a current public World
+Cup scoreboard and labels it separately. Static demo content is used only if both live sources fail
+and is never presented as live or verified data.
 
 ## Architecture
 
@@ -30,8 +31,10 @@ React client -> Match Pulse API -> TxLINE guest auth
 
 The browser calls only `/api/matches`. `server/txline.ts` owns guest authentication and keeps the
 TxLINE token off the client. `server/transform.ts` converts fixture, score, and 1X2 market records into
-the small match model used by the interface. The transform has focused unit tests for fair-probability
-normalization, live score mapping, and malformed upstream records.
+the small match model used by the interface using TxLINE's documented epoch-millisecond fixture times
+and nested soccer score shape. `server/scoreboard.ts` supplies current fixtures and scores without
+inventing market percentages when TxLINE credentials are unavailable. The client refreshes every 15
+seconds and always names the active provider.
 
 ## Run locally
 
@@ -56,7 +59,7 @@ npm run build
 
 - Consumer and Fan Experiences track
 - Functional web product, not a mockup
-- Live TxLINE input with a labelled demo fallback
+- Live TxLINE input with a clearly labelled current-score fallback
 - Solo-friendly and mobile responsive
 - No betting, wagering, deposits, or mainnet transactions
 

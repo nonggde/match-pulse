@@ -6,4 +6,12 @@ export interface Match {
   status: MatchStatus; minute: number; score?: { home: number; away: number }; outcomes: Outcome[]
   pulse: number; insight: string; events: MatchEvent[]; verified: boolean
 }
-export interface MatchFeed { source: 'live' | 'demo'; matches: Match[]; updatedAt: string }
+export type FeedProvider = 'txline' | 'scoreboard' | 'demo'
+export interface MatchFeed {
+  source: 'live' | 'demo'
+  provider: FeedProvider
+  matches: Match[]
+  updatedAt: string
+  note?: string
+  stale?: boolean
+}

@@ -32,8 +32,9 @@ World Cup API token. It reads:
 - `/api/scores/snapshot/{fixtureId}` for live score and match-state updates
 
 The API token never enters the browser. The client receives a compact normalized model from
-`/api/matches`. If credentials are missing or the feed has no priced fixtures, Match Pulse uses a
-clearly marked demo scenario. Demo records are never labeled live or verified.
+`/api/matches`. If credentials are missing, Match Pulse falls back to a current public World Cup
+scoreboard and labels it `Live scoreboard`, never `TxLINE verified`. Static demo records are used only
+if both live sources fail and are never labeled live or verified.
 
 ## What is working
 
@@ -43,15 +44,16 @@ clearly marked demo scenario. Demo records are never labeled live or verified.
 - Match pulse and event timeline
 - Friendly local predictions persisted in browser storage
 - Shareable match-moment text
-- Explicit live/demo feed status
-- Server-side token handling and automatic demo fallback
-- Unit tests for TxLINE record transformation
+- Explicit TxLINE/live-scoreboard/demo provider status
+- Server-side token handling and automatic current-score fallback
+- 15-second background refresh with cache bypass
+- Seven focused tests for TxLINE and scoreboard transformation
 
 ## Technical notes
 
 The frontend is React, TypeScript, and Vite. The API is an Express service written in TypeScript.
 `server/transform.ts` isolates upstream mapping from transport logic, so changes in the TxLINE record
-shape do not leak into components. The current build passes lint, three transformation tests, and the
+shape do not leak into components. The current build passes lint, seven transformation tests, and the
 production TypeScript/Vite build.
 
 ## TxLINE API feedback
@@ -70,9 +72,9 @@ Three changes would make integration easier:
    support batch fixture IDs. A match-center page currently needs one odds and one score request per
    fixture.
 
-The demo fallback was also useful during development because the Devnet API host can reject some
-network exits at the CloudFront layer. A documented status page or allow-list guidance would make that
-failure easier to distinguish from invalid credentials.
+The live-scoreboard fallback was also useful during development because the Devnet API host can reject
+some network exits at the CloudFront layer. A documented status page or allow-list guidance would make
+that failure easier to distinguish from invalid credentials.
 
 ## Safety and scope
 
