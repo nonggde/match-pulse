@@ -34,7 +34,9 @@ TxLINE token off the client. `server/transform.ts` converts fixture, score, and 
 the small match model used by the interface using TxLINE's documented epoch-millisecond fixture times
 and nested soccer score shape. `server/scoreboard.ts` supplies current fixtures and scores without
 inventing market percentages when TxLINE credentials are unavailable. The client refreshes every 15
-seconds and always names the active provider.
+seconds and always names the active provider. The first render is a neutral connection state, so
+static demo records never flash before a verified or fallback response arrives. A compact provenance
+strip keeps the source, verification level, refresh interval, and snapshot time visible.
 
 ## Run locally
 

@@ -3,25 +3,26 @@
 ## Recording checklist
 
 - Use a 1440 x 900 browser window.
-- Start on the live room with the feed badge visible.
-- If TxLINE is unavailable, say "demo scenario" and keep the badge visible. Do not call it live data.
+- Start on France vs Spain with both `TxLINE connected` and `TxLINE verified` visible.
+- Keep the provenance strip visible: source, Devnet level, refresh interval, and snapshot time.
+- If TxLINE is unavailable during recording, stop and retry instead of recording the fallback.
 - Record one continuous product walkthrough, then add a short architecture slide if needed.
 
 ## Script
 
 **0:00-0:12**
 
-"This is Match Pulse, a World Cup fan room powered by TxODDS TxLINE. It combines the fixture, score,
-fair probabilities, and match events on one screen, without asking a fan to connect a wallet or stake
-money."
+"This is Match Pulse, a World Cup fan room running on the TxODDS TxLINE Devnet feed. The provenance
+strip shows the source, service level, refresh interval, and exact snapshot time. It combines fixtures,
+scores, fair probabilities, and match events without asking a fan to connect a wallet or stake money."
 
 **0:12-0:30**
 
-Switch between the live Argentina match and an upcoming fixture.
+Switch from France vs Spain to England vs Argentina and back.
 
-"The match rail comes from the fixtures snapshot. Selecting a match updates the score state, venue,
-teams, 1X2 probabilities, and the pulse. Live score data comes from the score snapshot, while the fair
-line is normalized from the TxLINE 1X2 market."
+"The match rail comes from the current fixtures snapshot. Selecting a match updates its status, teams,
+score, 1X2 fair probabilities, and pulse. Score data comes from the score snapshot, while the fair line
+is normalized from the TxLINE 1X2 market. We do not invent movement when only a current snapshot exists."
 
 **0:30-0:48**
 
@@ -41,8 +42,8 @@ There is no wallet, stake, prize, or transaction."
 
 Open Create moment card and copy the share text.
 
-"The same match state becomes a compact moment that is ready to share. The card keeps the feed source
-visible, including the demo label when live credentials are unavailable."
+"The same match state becomes a compact moment that is ready to share. The card keeps the verified
+TxLINE source attached to the match context."
 
 **1:15-1:30**
 

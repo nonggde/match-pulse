@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Activity, ArrowRight, CalendarDays, Check, ChevronRight, CircleDot, Clock3, Copy,
-  Radio, RefreshCw, Share2, ShieldCheck, Sparkles, Trophy, Users, X,
+  Activity, AlertTriangle, ArrowRight, CalendarDays, Check, ChevronRight, CircleDot,
+  Clock3, Copy, Database, Radio, RefreshCw, Share2, ShieldCheck, Sparkles, Timer,
+  Trophy, Users, X,
 } from 'lucide-react'
 import './App.css'
-import { demoMatches } from './lib/demo'
 import type { MatchFeed } from './lib/types'
 
 type View = 'room' | 'fixtures' | 'picks'
@@ -16,10 +16,11 @@ const formatKickoff = (date: string) => new Intl.DateTimeFormat('en', {
 const teamCode = (name: string) => name.split(/\s+/).map((part) => part[0]).join('').slice(0, 3).toUpperCase()
 
 function App() {
-  const [feed, setFeed] = useState<MatchFeed>({ source: 'demo', provider: 'demo', matches: demoMatches, updatedAt: new Date().toISOString() })
-  const [selectedId, setSelectedId] = useState(demoMatches[0].id)
+  const [feed, setFeed] = useState<MatchFeed | null>(null)
+  const [selectedId, setSelectedId] = useState('')
   const [view, setView] = useState<View>('room')
   const [loading, setLoading] = useState(true)
+  const [feedError, setFeedError] = useState<string | null>(null)
   const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [picks, setPicks] = useState<Record<string, string>>(() => {
@@ -33,12 +34,12 @@ function App() {
       const response = await fetch('/api/matches')
       if (!response.ok) throw new Error('feed unavailable')
       const next = (await response.json()) as MatchFeed
-      if (next.matches.length) {
-        setFeed(next)
-        setSelectedId((current) => next.matches.some((match) => match.id === current) ? current : next.matches[0].id)
-      }
+      if (!next.matches.length) throw new Error('feed returned no current fixtures')
+      setFeed(next)
+      setFeedError(null)
+      setSelectedId((current) => next.matches.some((match) => match.id === current) ? current : next.matches[0].id)
     } catch {
-      setFeed({ source: 'demo', provider: 'demo', matches: demoMatches, updatedAt: new Date().toISOString() })
+      setFeedError('The current feed could not be refreshed. Retry to restore the verified match room.')
     } finally { if (showSpinner) setLoading(false) }
   }
 
@@ -49,10 +50,10 @@ function App() {
   }, [])
 
   const selected = useMemo(
-    () => feed.matches.find((match) => match.id === selectedId) ?? feed.matches[0],
-    [feed.matches, selectedId],
+    () => feed?.matches.find((match) => match.id === selectedId) ?? feed?.matches[0],
+    [feed, selectedId],
   )
-  const providerLabel = feed.provider === 'txline' ? 'TxLINE live' : feed.provider === 'scoreboard' ? 'Live scoreboard' : 'Demo feed'
+  const providerLabel = !feed ? 'Connecting feed' : feed.provider === 'txline' ? 'TxLINE connected' : feed.provider === 'scoreboard' ? 'Live scoreboard' : 'Demo feed'
   const pickOptions: Array<{ label: string; pct?: number }> = selected?.outcomes.length
     ? selected.outcomes.map((outcome) => ({ label: outcome.label, pct: outcome.pct }))
     : selected ? [{ label: selected.home }, { label: 'Draw' }, { label: selected.away }] : []
@@ -64,6 +65,7 @@ function App() {
   }
 
   const copyMoment = async () => {
+    if (!selected || !feed) return
     const score = selected.score ? `${selected.score.home}-${selected.score.away}` : 'up next'
     const source = feed.provider === 'txline' ? 'Verified by TxLINE' : feed.provider === 'scoreboard' ? 'Current World Cup scoreboard' : 'Demo scenario'
     const text = `${selected.home} ${score} ${selected.away} | Match Pulse ${selected.pulse}/100 | ${source}.`
@@ -71,8 +73,6 @@ function App() {
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1600)
   }
-
-  if (!selected) return null
 
   return (
     <div className="app-shell">
@@ -87,12 +87,30 @@ function App() {
           <button className={view === 'picks' ? 'active' : ''} onClick={() => setView('picks')}>My picks</button>
         </nav>
         <div className="feed-state">
-          <span className={`status-dot ${feed.source}`} /><span title={feed.note}>{providerLabel}</span>
+          <span className={`status-dot ${feed?.source ?? 'loading'}`} /><span title={feed?.note ?? feedError ?? undefined}>{providerLabel}</span>
           <button type="button" title="Refresh feed" onClick={() => void loadFeed()} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
           </button>
         </div>
       </header>
+
+      {feed && <div className={`trust-ribbon provider-${feed.provider}`}>
+        <div><Database size={14} /><span>Source</span><strong>{feed.provider === 'txline' ? 'TxODDS TxLINE' : feed.provider === 'scoreboard' ? 'World Cup scoreboard' : 'Static demo'}</strong></div>
+        <div><ShieldCheck size={14} /><span>Verification</span><strong>{feed.provider === 'txline' ? 'Devnet / Level 1' : feed.provider === 'scoreboard' ? 'Scores only' : 'Clearly labelled'}</strong></div>
+        <div><Timer size={14} /><span>Refresh</span><strong>Every 15 seconds</strong></div>
+        <div><Clock3 size={14} /><span>Snapshot</span><strong>{new Date(feed.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong></div>
+      </div>}
+
+      {!feed || !selected ? <main className="feed-gate" aria-live="polite">
+        <div className="gate-grid" aria-hidden="true"><span /><span /><span /><span /><span /><span /></div>
+        <div className="gate-copy">
+          {feedError ? <AlertTriangle size={24} /> : <Activity size={24} className="gate-pulse" />}
+          <span className="eyebrow">Match Pulse / live system</span>
+          <h1>{feedError ? 'Feed temporarily unavailable' : 'Establishing verified feed'}</h1>
+          <p>{feedError ?? 'Loading the latest fixtures, scores and fair probabilities from the server.'}</p>
+          {feedError && <button type="button" onClick={() => void loadFeed()} disabled={loading}><RefreshCw size={16} className={loading ? 'spin' : ''} /> Retry feed</button>}
+        </div>
+      </main> : <>
 
       {view === 'room' && <main className="live-layout">
         <aside className="match-rail" aria-label="Matches">
@@ -136,7 +154,9 @@ function App() {
             </div>
             <div className="pulse-line" style={{ '--pulse': `${selected.pulse}%` } as React.CSSProperties}><span /></div>
             {selected.outcomes.length ? <div className="probability-row">{selected.outcomes.map((outcome) => <div key={outcome.label}>
-              <span>{outcome.label}</span><strong>{outcome.pct.toFixed(0)}%</strong><small>{outcome.delta > 0 ? '+' : ''}{outcome.delta.toFixed(1)} today</small>
+              <span>{outcome.label}</span><strong>{outcome.pct.toFixed(0)}%</strong><small>{Math.abs(outcome.delta) >= .05
+                ? `${outcome.delta > 0 ? '+' : ''}${outcome.delta.toFixed(1)} line move`
+                : 'Current fair probability'}</small>
             </div>)}</div> : <div className="market-empty"><Radio size={16} /><div><strong>TxLINE fair line pending</strong><span>The current fixture is real; no market percentage is being fabricated.</span></div></div>}
           </div>
           <div className="stage-actions">
@@ -196,6 +216,7 @@ function App() {
           <button className="copy-button" type="button" onClick={() => void copyMoment()}>{copied ? <Check size={17} /> : <Copy size={17} />}{copied ? 'Copied' : 'Copy share text'}</button>
         </section>
       </div>}
+      </>}
     </div>
   )
 }

@@ -40,11 +40,13 @@ if both live sources fail and are never labeled live or verified.
 
 - Responsive live room with fixture switching
 - Live, upcoming, and final match states
-- De-margined 1X2 probabilities and probability movement
+- De-margined 1X2 fair probabilities without invented movement history
 - Match pulse and event timeline
 - Friendly local predictions persisted in browser storage
 - Shareable match-moment text
 - Explicit TxLINE/live-scoreboard/demo provider status
+- Always-visible source, verification, refresh, and snapshot provenance strip
+- Neutral first-load and refresh-error states with no fictional match flash
 - Server-side token handling and automatic current-score fallback
 - 15-second background refresh with cache bypass
 - Seven focused tests for TxLINE and scoreboard transformation
