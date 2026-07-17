@@ -11,6 +11,7 @@
 .feed-state button { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); background: transparent; cursor: pointer; margin-left: 5px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 4px rgba(240,189,75,.12); }
 .status-dot.live { background: var(--signal); box-shadow: 0 0 0 4px rgba(215,255,63,.12); }
+.status-dot.stale { background: var(--gold); box-shadow: 0 0 0 4px rgba(240,189,75,.12); }
 .status-dot.loading { background: var(--sky); box-shadow: 0 0 0 4px rgba(97,183,255,.12); animation: status-pulse 1.2s ease-in-out infinite; }
 .spin { animation: spin .7s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes status-pulse { 50% { opacity: .35; } }

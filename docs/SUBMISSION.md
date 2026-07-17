@@ -49,7 +49,17 @@ if both live sources fail and are never labeled live or verified.
 - Neutral first-load and refresh-error states with no fictional match flash
 - Server-side token handling and automatic current-score fallback
 - 15-second background refresh with cache bypass
+- Last-good-snapshot mode that marks delayed data instead of presenting it as live
 - Seven focused tests for TxLINE and scoreboard transformation
+
+## Commercial path
+
+The first customer is a supporter club, broadcaster, creator community, or tournament organizer that
+wants a branded second-screen room without operating a betting product. Match Pulse can be embedded
+or white-labelled, with sponsored match rooms and community subscriptions as the initial revenue
+model. The friendly pre-match call creates a return loop, the live pulse sustains attention, and the
+source-attached moment card turns each fixture into distribution. None of these mechanics require a
+wallet, stake, deposit, or prize pool.
 
 ## Technical notes
 

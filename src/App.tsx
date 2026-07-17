@@ -39,7 +39,9 @@ function App() {
       setFeedError(null)
       setSelectedId((current) => next.matches.some((match) => match.id === current) ? current : next.matches[0].id)
     } catch {
-      setFeedError('The current feed could not be refreshed. Retry to restore the verified match room.')
+      const message = 'The current feed could not be refreshed. Showing the last good snapshot while the connection recovers.'
+      setFeedError(message)
+      setFeed((current) => current ? { ...current, stale: true, note: message } : current)
     } finally { if (showSpinner) setLoading(false) }
   }
 
@@ -53,7 +55,7 @@ function App() {
     () => feed?.matches.find((match) => match.id === selectedId) ?? feed?.matches[0],
     [feed, selectedId],
   )
-  const providerLabel = !feed ? 'Connecting feed' : feed.provider === 'txline' ? 'TxLINE connected' : feed.provider === 'scoreboard' ? 'Live scoreboard' : 'Demo feed'
+  const providerLabel = !feed ? 'Connecting feed' : feed.stale ? 'Feed delayed' : feed.provider === 'txline' ? 'TxLINE connected' : feed.provider === 'scoreboard' ? 'Live scoreboard' : 'Demo feed'
   const pickOptions: Array<{ label: string; pct?: number }> = selected?.outcomes.length
     ? selected.outcomes.map((outcome) => ({ label: outcome.label, pct: outcome.pct }))
     : selected ? [{ label: selected.home }, { label: 'Draw' }, { label: selected.away }] : []
@@ -67,7 +69,7 @@ function App() {
   const copyMoment = async () => {
     if (!selected || !feed) return
     const score = selected.score ? `${selected.score.home}-${selected.score.away}` : 'up next'
-    const source = feed.provider === 'txline' ? 'Verified by TxLINE' : feed.provider === 'scoreboard' ? 'Current World Cup scoreboard' : 'Demo scenario'
+    const source = feed.stale ? 'Last good snapshot' : feed.provider === 'txline' ? 'Verified by TxLINE' : feed.provider === 'scoreboard' ? 'Current World Cup scoreboard' : 'Demo scenario'
     const text = `${selected.home} ${score} ${selected.away} | Match Pulse ${selected.pulse}/100 | ${source}.`
     await navigator.clipboard.writeText(text)
     setCopied(true)
@@ -87,7 +89,7 @@ function App() {
           <button className={view === 'picks' ? 'active' : ''} onClick={() => setView('picks')}>My picks</button>
         </nav>
         <div className="feed-state">
-          <span className={`status-dot ${feed?.source ?? 'loading'}`} /><span title={feed?.note ?? feedError ?? undefined}>{providerLabel}</span>
+          <span className={`status-dot ${feed?.stale ? 'stale' : feed?.source ?? 'loading'}`} /><span title={feed?.note ?? feedError ?? undefined}>{providerLabel}</span>
           <button type="button" title="Refresh feed" onClick={() => void loadFeed()} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} />
           </button>
@@ -96,9 +98,9 @@ function App() {
 
       {feed && <div className={`trust-ribbon provider-${feed.provider}`}>
         <div><Database size={14} /><span>Source</span><strong>{feed.provider === 'txline' ? 'TxODDS TxLINE' : feed.provider === 'scoreboard' ? 'World Cup scoreboard' : 'Static demo'}</strong></div>
-        <div><ShieldCheck size={14} /><span>Verification</span><strong>{feed.provider === 'txline' ? 'Devnet / Level 1' : feed.provider === 'scoreboard' ? 'Scores only' : 'Clearly labelled'}</strong></div>
+        <div><ShieldCheck size={14} /><span>Verification</span><strong>{feed.stale ? 'Last good snapshot' : feed.provider === 'txline' ? 'Devnet / Level 1' : feed.provider === 'scoreboard' ? 'Scores only' : 'Clearly labelled'}</strong></div>
         <div><Timer size={14} /><span>Refresh</span><strong>Every 15 seconds</strong></div>
-        <div><Clock3 size={14} /><span>Snapshot</span><strong>{new Date(feed.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong></div>
+        <div><Clock3 size={14} /><span>Snapshot</span><strong>{feed.stale ? 'Delayed / ' : ''}{new Date(feed.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong></div>
       </div>}
 
       {!feed || !selected ? <main className="feed-gate" aria-live="polite">
@@ -124,8 +126,10 @@ function App() {
             <span className="mini-score"><b>{match.score?.home ?? '-'}</b><b>{match.score?.away ?? '-'}</b></span>
             <ChevronRight size={16} />
           </button>)}
-          <div className="verified-note"><ShieldCheck size={17} /><span>{feed.provider === 'txline'
-            ? 'Fixtures, scores and fair probabilities are verified by TxODDS TxLINE.'
+          <div className="verified-note"><ShieldCheck size={17} /><span>{feed.stale
+            ? 'Showing the last good snapshot while the live feed reconnects.'
+            : feed.provider === 'txline'
+              ? 'Fixtures, scores and fair probabilities are verified by TxODDS TxLINE.'
             : feed.provider === 'scoreboard'
               ? 'Current fixtures and scores come from the live World Cup scoreboard. TxLINE verification is pending.'
               : 'This is a static demo scenario, not a current match feed.'}</span></div>
@@ -136,7 +140,7 @@ function App() {
           <div className="stage-meta">
             <span><Trophy size={15} /> {selected.competition}</span>
             <span><CalendarDays size={15} /> {formatKickoff(selected.startTime)}</span>
-            <span className={`source-chip ${feed.provider}`}><CircleDot size={14} /> {selected.verified ? 'TxLINE verified' : feed.provider === 'scoreboard' ? 'Current scoreboard' : 'Demo scenario'}</span>
+            <span className={`source-chip ${feed.provider}`}><CircleDot size={14} /> {feed.stale ? 'Last good snapshot' : selected.verified ? 'TxLINE verified' : feed.provider === 'scoreboard' ? 'Current scoreboard' : 'Demo scenario'}</span>
           </div>
           <div className="scoreboard">
             <div className="team home-team"><span className="team-badge">{teamCode(selected.home)}</span><h1>{selected.home}</h1><small>Home</small></div>
@@ -212,7 +216,7 @@ function App() {
           <span className="eyebrow">Match Pulse moment</span>
           <div className="moment-score"><b>{teamCode(selected.home)}</b><span>{selected.score?.home ?? '-'} : {selected.score?.away ?? '-'}</span><b>{teamCode(selected.away)}</b></div>
           <h2>{selected.insight}</h2>
-          <div className="moment-pulse"><Activity size={18} /><span>Pulse {selected.pulse}/100</span><small>{selected.verified ? 'TxLINE verified' : feed.provider === 'scoreboard' ? 'Current scoreboard' : 'Demo scenario'}</small></div>
+          <div className="moment-pulse"><Activity size={18} /><span>Pulse {selected.pulse}/100</span><small>{feed.stale ? 'Last good snapshot' : selected.verified ? 'TxLINE verified' : feed.provider === 'scoreboard' ? 'Current scoreboard' : 'Demo scenario'}</small></div>
           <button className="copy-button" type="button" onClick={() => void copyMoment()}>{copied ? <Check size={17} /> : <Copy size={17} />}{copied ? 'Copied' : 'Copy share text'}</button>
         </section>
       </div>}

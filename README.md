@@ -36,7 +36,9 @@ and nested soccer score shape. `server/scoreboard.ts` supplies current fixtures 
 inventing market percentages when TxLINE credentials are unavailable. The client refreshes every 15
 seconds and always names the active provider. The first render is a neutral connection state, so
 static demo records never flash before a verified or fallback response arrives. A compact provenance
-strip keeps the source, verification level, refresh interval, and snapshot time visible.
+strip keeps the source, verification level, refresh interval, and snapshot time visible. If a refresh
+fails after a valid response, the interface keeps the last useful screen but marks it as delayed
+instead of presenting stale data as live.
 
 ## Run locally
 
@@ -64,6 +66,13 @@ npm run build
 - Live TxLINE input with a clearly labelled current-score fallback
 - Solo-friendly and mobile responsive
 - No betting, wagering, deposits, or mainnet transactions
+
+## Product path
+
+Match Pulse can ship as a white-label match room for supporter clubs, broadcasters, and tournament
+communities. The retention loop is the friendly pre-match call, the live pulse, and a source-attached
+moment card that brings fans back for the next fixture. Revenue can come from sponsored rooms and
+community subscriptions without adding betting, custody, or wallet friction.
 
 Live sports data is provided by TxODDS TxLINE for the 2026 World Cup hackathon. Stadium photography
 is from Unsplash and is used as an atmospheric background only.
